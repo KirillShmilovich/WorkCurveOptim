@@ -1,0 +1,14 @@
+#!/bin/sh
+
+#SBATCH --job-name=JOB_NAME
+#SBATCH --out=JOB_NAME.%j.out
+#SBATCH --partition=broadwl
+#SBATCH --time=4:00:00
+#SBATCH --ntasks-per-node=1 # num cores to drive each gpu 
+#SBATCH --exclusive
+
+# LOAD MODULES
+module load python 
+
+# DO COMPUTE WORK
+/project2/andrewferguson/Kirill/env_kirills/bin/python -u run_optim.py ARGS_PATH
