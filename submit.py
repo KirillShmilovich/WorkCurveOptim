@@ -11,6 +11,7 @@ file_name = "sbatch.template"
 submit_name = "sbatch.sbatch"
 replace_name = "JOB_NAME"
 replace_args = "ARGS_PATH"
+replace_path = "DIR_PATH"
 
 
 def main(job_names, command_strs):
@@ -23,6 +24,12 @@ def main(job_names, command_strs):
         with fileinput.FileInput(submit_name, inplace=True) as file:
             for line in file:
                 print(line.replace(replace_name, job_name), end="")
+
+        with fileinput.FileInput(submit_name, inplace=True) as file:
+            dir_path = str(Path(command_str).parent)
+            for line in file:
+                print(line.replace(replace_path, dir_path), end="")
+
         os.system(f"sbatch {submit_name}")
 
     print("DONE")
@@ -70,7 +77,7 @@ if __name__ == "__main__":
             with open(save_path / "params.yaml", "w") as yaml_file:
                 yaml.dump(args, yaml_file, default_flow_style=False)
 
-        job_names.append(f"train_{trial}")
+        job_names.append(f"trial_{trial}")
         arg_paths.append(str(save_path / "params.yaml"))
 
     main(job_names, arg_paths)
