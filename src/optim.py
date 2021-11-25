@@ -4,7 +4,7 @@ import cma
 import pickle
 from pathlib import Path
 
-from .utils import A_0, nm
+from .utils import A_0, nm, ms2steps
 from .losses import dist_loss, angle_loss_smooth, phase_loss
 
 
@@ -25,6 +25,8 @@ class Optimizer:
         save_path=None,
         load_path=None,
         save_freq=10,
+        sim_init_sep=700 * nm,
+        sim_init_angle=np.pi / 2.0,
         **kwargs
     ):
 
@@ -41,6 +43,9 @@ class Optimizer:
         self.cma_sigma = cma_sigma
         self.cma_opts = cma_opts
 
+        self.sim_init_sep = sim_init_sep
+        self.sim_init_angle = sim_init_angle
+
         self.separation = np.linspace(
             self.min_sep_dist, target_dist + self.max_sep_fac * A_0 * nm, 100
         )
@@ -55,7 +60,7 @@ class Optimizer:
         self.save_freq = save_freq
         self.load_path = load_path
         if self.load_path is not None:
-            self.es = pickle.load(open(self.load_path, "rb"))
+            self._load(self.load_path)
 
     def loss_func(self, x):
         anm = self.anm_gen.get_beam_profile(x)
@@ -75,10 +80,40 @@ class Optimizer:
         )
         return total_loss
 
+    def _load(self, load_path):
+        state_dict = pickle.load(open(self.load_path, "rb"))
+        self.es = state_dict["es"]
+        if "eval_data" in state_dict.keys():
+            self.eval_data = state_dict["eval_data"]
+
+    def _save_file(self):
+        state_dict = dict()
+        state_dict["es"] = self.es
+        if hasattr(self, "eval_data"):
+            state_dict["eval_data"] = self.eval_data
+
+        pickle.dump(state_dict, open(self.save_path / "optim.pkl", "wb"))
+
     def _save(self, step):
         if self.save_path is not None:
-            if step % self.save_freq == 0:
-                pickle.dump(self.es, open(self.save_path / "optim.pkl", "wb"))
+            if step is None:
+                self._save_file()
+            elif step % self.save_freq == 0:
+                self._save_file()
+
+    def eval(self, anm):
+        init_sep = self.sim_init_sep
+        init_angle = self.sim_init_angle
+        n_steps = ms2steps(100, dt=5000 * 1e-9)
+
+        self.eval_data = dict()
+        pos = self.dimer.sim(init_sep, init_angle, n_steps, anm)
+        self.eval_data["pos"] = pos
+        self.eval_data["separation"] = (
+            np.linalg.norm(pos[:, 0] - pos[:, 1], axis=-1) / nm
+        )
+        self.eval_data["com"] = np.mean(pos[:, 0] + pos[:, 1], axis=-1) / nm
+        return self.eval_data
 
     def optimize(self):
         x_0 = self.anm_gen.get_x0()
@@ -109,4 +144,8 @@ class Optimizer:
 
         print("termination:", self.es.stop())
         cma.s.pprint(self.es.best.__dict__)
-        self._save(step)
+
+        anm = self.anm_gen.get_beam_profile(self.es.best.x)
+        self.eval(anm)
+
+        self._save(step=None)

@@ -59,17 +59,24 @@ if __name__ == "__main__":
         "max_sep_fac": 2,
         "save_path": None,
         "save_freq": 10,
+        "sim_init_sep": 700 * nm,
+        "sim_init_angle": np.pi / 2.0,
     }
 
-    dir_name = "Experiments/ManyTrials"
-
+    dir_name = "Experiments/Trials_50"
     N_trails = 50
+
+    # dir_name = "Experiments/Trials_sep_params"
+    # N_trails = 20
+    # sep_dists = [150 * nm, 200 * nm, 250 * nm]
+    # max_sep_facs = [2, 3, 4]
 
     job_names = list()
     arg_paths = list()
     for trial in range(N_trails):
+        exp_name = f"/trial_{trial}"
 
-        args["save_path"] = dir_name + f"/trial_{trial}"
+        args["save_path"] = dir_name + exp_name
         if args["save_path"] is not None:
             save_path = Path(args["save_path"])
             save_path.mkdir(parents=True, exist_ok=True)
@@ -77,7 +84,7 @@ if __name__ == "__main__":
             with open(save_path / "params.yaml", "w") as yaml_file:
                 yaml.dump(args, yaml_file, default_flow_style=False)
 
-        job_names.append(f"trial_{trial}")
+        job_names.append(exp_name)
         arg_paths.append(str(save_path / "params.yaml"))
 
     main(job_names, arg_paths)
