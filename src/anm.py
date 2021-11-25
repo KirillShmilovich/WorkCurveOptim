@@ -35,6 +35,8 @@ class ANM(BaseANM):
     def get_x0(self):
         if isinstance(self.x_0_init, np.ndarray):
             return self.x_0_init
+        elif isinstance(self.x_0_init, list):
+            return np.array(self.x_0_init)
         else:
             if self.x_0_init > 0:
                 return np.random.normal(scale=self.x_0_init, size=self.NonZeroIdxs.size)
